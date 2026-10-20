@@ -1,0 +1,419 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anna University GPA Calculator</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      margin: 0;
+      padding: 25px 15px;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 14px;
+      box-shadow: 0 4px 15px #00000012;
+    }
+
+    h1 {
+      color: #1d4ed8;
+      margin-top: 0;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+    }
+
+    input, select, button {
+      font-size: 15px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    input, select {
+      border: 1px solid #cbd5e1;
+      width: 100%;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #eff6ff;
+    }
+
+    button {
+      border: none;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      margin: 5px 3px 5px 0;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .secondary {
+      background: #475569;
+    }
+
+    .remove {
+      background: #dc2626;
+      padding: 8px;
+    }
+
+    .result {
+      background: #eff6ff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    .message {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #15803d;
+    }
+
+    @media (max-width: 550px) {
+      .container {
+        padding: 14px;
+      }
+
+      th, td {
+        padding: 4px;
+      }
+
+      input, select {
+        padding: 7px 3px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Anna University GPA Calculator</h1>
+    <p>Calculate your semester GPA and overall CGPA.</p>
+
+    <label for="semesterName">Semester name</label>
+    <input id="semesterName" type="text"
+           placeholder="Example: Semester 1">
+
+    <h2>Enter Subjects</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Credits</th>
+          <th>Grade</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="subjectRows"></tbody>
+    </table>
+
+    <button type="button" class="secondary"
+            onclick="addSubject()">+ Add Subject</button>
+
+    <button type="button" onclick="calculateGPA()">
+      Calculate GPA
+    </button>
+
+    <button type="button" onclick="saveSemester()">
+      Save Semester
+    </button>
+
+    <p id="message" class="message" role="status"></p>
+
+    <div id="gpaResult" class="result" aria-live="polite">
+      Your GPA will appear here.
+    </div>
+
+    <h2>Semester History</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Semester</th>
+          <th>Credits</th>
+          <th>GPA</th>
+        </tr>
+      </thead>
+      <tbody id="semesterRows">
+        <tr>
+          <td colspan="3">No semesters saved yet.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="cgpaResult" class="result">
+      Overall CGPA: Not calculated yet.
+    </div>
+  </div>
+
+  <script>
+    var gradePoints = {
+      "O": 10,
+      "A+": 9,
+      "A": 8,
+      "B+": 7,
+      "B": 6,
+      "C": 5,
+      "U": 0
+    };
+
+    var semesters = [];
+    var lastCalculation = null;
+
+    function addSubject() {
+      var tbody = document.getElementById("subjectRows");
+      var row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>
+          <input type="text" class="subject"
+                 placeholder="Subject name">
+        </td>
+        <td>
+          <input type="number" class="credit"
+                 min="1" max="6" step="1"
+                 placeholder="Credits">
+        </td>
+        <td>
+          <select class="grade">
+            <option value="">Select</option>
+            <option value="O">O</option>
+            <option value="A+">A+</option>
+            <option value="A">A</option>
+            <option value="B+">B+</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="U">U</option>
+          </select>
+        </td>
+        <td>
+          <button type="button" class="remove"
+                  onclick="removeSubject(this)">
+            Remove
+          </button>
+        </td>
+      `;
+
+      tbody.appendChild(row);
+      lastCalculation = null;
+      document.getElementById("message").innerText = "";
+    }
+
+    function removeSubject(button) {
+      var rows = document.querySelectorAll("#subjectRows tr");
+
+      if (rows.length <= 1) {
+        showError("At least one subject is required.");
+        return;
+      }
+
+      button.closest("tr").remove();
+      lastCalculation = null;
+      document.getElementById("gpaResult").innerText =
+        "Subject list changed. Calculate GPA again.";
+      document.getElementById("message").innerText = "";
+    }
+
+    function showError(message) {
+      document.getElementById("message").innerText = message;
+      document.getElementById("gpaResult").innerText =
+        "Please correct the input and try again.";
+      lastCalculation = null;
+    }
+
+    function getCalculation() {
+      var rows = document.querySelectorAll("#subjectRows tr");
+      var totalPoints = 0;
+      var totalCredits = 0;
+
+      if (rows.length === 0) {
+        showError("Add at least one subject.");
+        return null;
+      }
+
+      for (var i = 0; i < rows.length; i++) {
+        var subject = rows[i].querySelector(".subject").value.trim();
+        var creditInput = rows[i].querySelector(".credit");
+        var credit = Number(creditInput.value);
+        var grade = rows[i].querySelector(".grade").value;
+
+        if (subject === "") {
+          showError("Enter the subject name in row " + (i + 1) + ".");
+          return null;
+        }
+
+        if (
+          creditInput.value.trim() === "" ||
+          !Number.isInteger(credit) ||
+          credit < 1 ||
+          credit > 6
+        ) {
+          showError(
+            "Credits must be a whole number from 1 to 6. Row " +
+            (i + 1) + "."
+          );
+          return null;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(gradePoints, grade) ||
+            grade === "") {
+          showError("Select a valid grade in row " + (i + 1) + ".");
+          return null;
+        }
+
+        totalPoints += credit * gradePoints[grade];
+        totalCredits += credit;
+      }
+
+      return {
+        credits: totalCredits,
+        points: totalPoints,
+        gpa: totalPoints / totalCredits
+      };
+    }
+
+    function calculateGPA() {
+      document.getElementById("message").innerText = "";
+
+      var calculation = getCalculation();
+
+      if (calculation === null) {
+        return;
+      }
+
+      lastCalculation = calculation;
+
+      document.getElementById("gpaResult").innerText =
+        "Your GPA is " + calculation.gpa.toFixed(2) +
+        " | Total Credits: " + calculation.credits;
+    }
+
+    function saveSemester() {
+      var semesterName =
+        document.getElementById("semesterName").value.trim();
+
+      if (semesterName === "") {
+        showError("Enter the semester name before saving.");
+        return;
+      }
+
+      var duplicate = semesters.some(function (semester) {
+        return semester.name.toLowerCase() === semesterName.toLowerCase();
+      });
+
+      if (duplicate) {
+        showError("This semester name already exists.");
+        return;
+      }
+
+      document.getElementById("message").innerText = "";
+
+      var calculation = getCalculation();
+
+      if (calculation === null) {
+        return;
+      }
+
+      semesters.push({
+        name: semesterName,
+        credits: calculation.credits,
+        points: calculation.points,
+        gpa: calculation.gpa
+      });
+
+      renderSemesters();
+
+      document.getElementById("message").innerText =
+        "Semester saved successfully!";
+      document.getElementById("message").className =
+        "message success";
+
+      document.getElementById("gpaResult").innerText =
+        semesterName + " GPA: " + calculation.gpa.toFixed(2);
+
+      document.getElementById("semesterName").value = "";
+      document.getElementById("subjectRows").innerHTML = "";
+      addSubject();
+      addSubject();
+      addSubject();
+    }
+
+    function renderSemesters() {
+      var tbody = document.getElementById("semesterRows");
+      tbody.innerHTML = "";
+
+      var totalPoints = 0;
+      var totalCredits = 0;
+
+      semesters.forEach(function (semester) {
+        var row = document.createElement("tr");
+
+        [semester.name, semester.credits, semester.gpa.toFixed(2)]
+          .forEach(function (value) {
+            var cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+
+        tbody.appendChild(row);
+
+        totalPoints += semester.points;
+        totalCredits += semester.credits;
+      });
+
+      if (semesters.length === 0) {
+        var row = tbody.insertRow();
+        var cell = row.insertCell();
+        cell.colSpan = 3;
+        cell.textContent = "No semesters saved yet.";
+      }
+
+      var cgpa = totalPoints / totalCredits;
+
+      document.getElementById("cgpaResult").innerText =
+        "Overall CGPA: " + cgpa.toFixed(2) +
+        " | Total Credits: " + totalCredits;
+    }
+
+    addSubject();
+    addSubject();
+    addSubject();
+  </script>
+</body>
+</html>
